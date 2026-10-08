@@ -10,7 +10,7 @@
 </head>
 <body>
 <main>
-<header><span class="tag">Food truck daily planner</span><h1>Know your break-even point.</h1><p>Find how many meals you need to sell each day to cover your food truck’s costs.</p></header>
+<header><span class="tag">Food truck daily planner</span><h1>Know your break-even point.</h1><p>Find how many meals you need to sell each day to cover your food truck’s costs and reach your profit goal.</p></header>
 <div class="layout">
 <section class="card" aria-labelledby="cost-heading">
 <h2 id="cost-heading">Enter your daily costs</h2>
@@ -18,6 +18,7 @@
 <label for="fixed">Daily fixed costs ($)</label><input id="fixed" name="fixed" type="number" min="0" step="0.01" inputmode="decimal" value="180" required aria-describedby="fixed-hint"><p class="hint" id="fixed-hint">Include daily rent, permits, fuel, and staff costs.</p>
 <label for="price">Selling price per meal ($)</label><input id="price" name="price" type="number" min="0.01" step="0.01" inputmode="decimal" value="12" required>
 <label for="cost">Variable cost per meal ($)</label><input id="cost" name="cost" type="number" min="0" step="0.01" inputmode="decimal" value="5" required aria-describedby="cost-hint"><p class="hint" id="cost-hint">Include ingredients, packaging, and any per-meal fees.</p>
+<label for="goal">Daily profit goal ($)</label><input id="goal" name="goal" type="number" min="0" step="0.01" inputmode="decimal" value="100" required aria-describedby="goal-hint"><p class="hint" id="goal-hint">Profit after covering all costs. Enter 0 if you only want to break even.</p>
 <p id="error" class="error" role="alert" hidden></p>
 <button type="submit">Calculate meals needed</button>
 <button type="button" class="secondary" id="example">Reset to example</button>
@@ -27,7 +28,8 @@
 <h2 id="result-heading">Your daily break-even point</h2>
 <div id="results"><div class="big" id="meals">26</div><div class="units">meals per day</div>
 <dl class="details"><div><dt>Contribution per meal</dt><dd id="margin">$7.00</dd></div><div><dt>Sales at break-even</dt><dd id="sales">$312.00</dd></div><div><dt>Profit at that quantity</dt><dd id="profit">$2.00</dd></div></dl>
-<p class="explain" id="explain">$180.00 ÷ $7.00 = 25.71 meals. Round up to 26 to cover your daily costs.</p></div>
+<p class="explain" id="explain">$180.00 ÷ $7.00 = 25.71 meals. Round up to 26 to cover your daily costs.</p>
+<dl class="details"><div><dt>Meals to reach profit goal</dt><dd id="goal-meals">40 meals</dd></div><div><dt>Profit at goal quantity</dt><dd id="goal-profit">$100.00</dd></div></dl><p class="explain" id="goal-explain">Sell 40 meals to cover your costs and earn at least $100.00 in daily profit.</p></div>
 <p class="empty" id="empty" hidden>Enter valid costs on the left to see your break-even point.</p>
 </section>
 </div>
@@ -37,30 +39,34 @@
 <script>
 'use strict';
 const form=document.getElementById('calculator');
-const fields=['fixed','price','cost'].map(id=>document.getElementById(id));
+const fields=['fixed','price','cost','goal'].map(id=>document.getElementById(id));
 const dollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
 const counts=new Intl.NumberFormat('en-US',{maximumFractionDigits:2});
 function fail(message,field){document.getElementById('error').textContent=message;document.getElementById('error').hidden=false;document.getElementById('results').hidden=true;document.getElementById('empty').hidden=false;field.setAttribute('aria-invalid','true');field.focus();}
 function calculate(){
  fields.forEach(field=>field.removeAttribute('aria-invalid'));
- const labels=['daily fixed costs','selling price per meal','variable cost per meal'];
+ const labels=['daily fixed costs','selling price per meal','variable cost per meal','daily profit goal'];
  for(let i=0;i<fields.length;i++){const field=fields[i];if(field.value.trim()===''||field.validity.badInput||!Number.isFinite(Number(field.value))){fail('Please enter a number for '+labels[i]+'.',field);return;}if(Number(field.value)<0){fail('Please enter zero or a positive number for '+labels[i]+'.',field);return;}if(!field.validity.stepMismatch)continue;fail('Please use no more than two decimal places for '+labels[i]+'.',field);return;}
- const [fixed,price,cost]=fields.map(field=>Math.round(Number(field.value)*100));
+ const [fixed,price,cost,goal]=fields.map(field=>Math.round(Number(field.value)*100));
  if(price<=0){fail('Selling price must be greater than $0.00.',fields[1]);return;}
  const margin=price-cost;
  if(margin<=0){fail('Selling price must be higher than variable cost. Each meal needs to contribute toward your fixed costs.',fields[1]);return;}
  const meals=Math.ceil(fixed/margin);
- if(![fixed,price,cost,meals,meals*price,meals*margin].every(Number.isSafeInteger)){fail('These amounts are too large to calculate accurately. Please enter smaller amounts.',fields[0]);return;}
+ const goalMeals=Math.ceil((fixed+goal)/margin);
+ if(![fixed,price,cost,goal,fixed+goal,meals,meals*price,meals*margin,goalMeals,goalMeals*margin].every(Number.isSafeInteger)){fail('These amounts are too large to calculate accurately. Please enter smaller amounts.',fields[0]);return;}
  document.getElementById('error').hidden=true;document.getElementById('results').hidden=false;document.getElementById('empty').hidden=true;
  document.getElementById('meals').textContent=counts.format(meals);
  document.getElementById('margin').textContent=dollars.format(margin/100);
  document.getElementById('sales').textContent=dollars.format(meals*price/100);
  document.getElementById('profit').textContent=dollars.format((meals*margin-fixed)/100);
+ document.getElementById('goal-meals').textContent=counts.format(goalMeals)+' meals';
+ document.getElementById('goal-profit').textContent=dollars.format((goalMeals*margin-fixed)/100);
+ document.getElementById('goal-explain').textContent='Sell '+counts.format(goalMeals)+' meals to cover your costs and earn at least '+dollars.format(goal/100)+' in daily profit.';
  document.getElementById('explain').textContent=fixed===0?'Your fixed costs are zero, so you need 0 meals to break even. Every meal sold contributes '+dollars.format(margin/100)+' toward profit.':dollars.format(fixed/100)+' ÷ '+dollars.format(margin/100)+' = '+counts.format(fixed/margin)+' meals. Round up to '+counts.format(meals)+' to cover your daily costs.';
 }
 form.addEventListener('submit',event=>{event.preventDefault();calculate();});
 fields.forEach(field=>field.addEventListener('input',()=>{document.getElementById('results').hidden=true;document.getElementById('empty').hidden=false;document.getElementById('empty').textContent='Click Calculate meals needed to update your results.';document.getElementById('error').hidden=true;fields.forEach(input=>input.removeAttribute('aria-invalid'));}));
-document.getElementById('example').addEventListener('click',()=>{fields.forEach((field,i)=>field.value=[180,12,5][i]);calculate();});
+document.getElementById('example').addEventListener('click',()=>{fields.forEach((field,i)=>field.value=[180,12,5,100][i]);calculate();});
 calculate();
 </script>
 </body>
